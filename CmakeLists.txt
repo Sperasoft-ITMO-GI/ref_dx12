@@ -1,0 +1,9 @@
+cmake_minimum_required(VERSION 3.12)
+
+project(ref_dx12 LANGUAGES CXX)
+
+add_compile_options(-Wall -Wextra -Wpedantic -Wno-c++98-compat -Wno-c++98-compat-pedantic)
+
+add_executable(${PROJECT_NAME} application.cpp)
+
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)

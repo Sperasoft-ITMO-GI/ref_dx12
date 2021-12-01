@@ -152,13 +152,11 @@
   <ItemGroup>
     <ClCompile Include="..\game\q_shared.c" />
     <ClCompile Include="..\win32\q_shwin.c" />
-    <ClCompile Include="dx12w_imp.c" />
     <ClCompile Include="dx12_rmain.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\client\ref.h" />
     <ClInclude Include="..\game\q_shared.h" />
-    <ClInclude Include="dx12w_win.h" />
     <ClInclude Include="dx12_local.h" />
   </ItemGroup>
   <ItemGroup>

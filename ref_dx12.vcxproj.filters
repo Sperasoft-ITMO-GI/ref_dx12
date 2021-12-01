@@ -18,9 +18,6 @@
     <ClCompile Include="dx12_rmain.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="dx12w_imp.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\game\q_shared.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -36,9 +33,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="dx12_local.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="dx12w_win.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

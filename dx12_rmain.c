@@ -1,5 +1,9 @@
 // r_main.c
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "dx12_local.h"
+
+#include <dx12Init.h>
 
 viddef_t	vid;
 
@@ -23,20 +27,22 @@ cvar_t* vid_fullscreen;
 cvar_t* vid_gamma;
 cvar_t* vid_ref;
 
+cvar_t* gl_mode;
+
 // запись параметров в конфиг файл
 void R_Register(void)
 {
-	r_lefthand = ri.Cvar_Get("hand", "0", CVAR_USERINFO | CVAR_ARCHIVE);
-	r_norefresh = ri.Cvar_Get("r_norefresh", "0", 0);
-	r_fullbright = ri.Cvar_Get("r_fullbright", "0", 0);
-	r_drawentities = ri.Cvar_Get("r_drawentities", "1", 0);
-	r_drawworld = ri.Cvar_Get("r_drawworld", "1", 0);
-	r_novis = ri.Cvar_Get("r_novis", "0", 0);
-	r_nocull = ri.Cvar_Get("r_nocull", "0", 0);
-	r_lerpmodels = ri.Cvar_Get("r_lerpmodels", "1", 0);
-	r_speeds = ri.Cvar_Get("r_speeds", "0", 0);
+	r_lefthand = ri.Cvar_Get((char*)"hand", (char*)"0", CVAR_USERINFO | CVAR_ARCHIVE);
+	r_norefresh = ri.Cvar_Get((char*)"r_norefresh", (char*)"0", 0);
+	r_fullbright = ri.Cvar_Get((char*)"r_fullbright", (char*)"0", 0);
+	r_drawentities = ri.Cvar_Get((char*)"r_drawentities", (char*)"1", 0);
+	r_drawworld = ri.Cvar_Get((char*)"r_drawworld", (char*)"1", 0);
+	r_novis = ri.Cvar_Get((char*)"r_novis", (char*)"0", 0);
+	r_nocull = ri.Cvar_Get((char*)"r_nocull", (char*)"0", 0);
+	r_lerpmodels = ri.Cvar_Get((char*)"r_lerpmodels", (char*)"1", 0);
+	r_speeds = ri.Cvar_Get((char*)"r_speeds", (char*)"0", 0);
 	
-	r_lightlevel = ri.Cvar_Get("r_lightlevel", "0", 0);
+	r_lightlevel = ri.Cvar_Get((char*)"r_lightlevel", (char*)"0", 0);
 	
 	//gl_nosubimage = ri.Cvar_Get("gl_nosubimage", "0", 0);
 	//gl_allow_software = ri.Cvar_Get("gl_allow_software", "0", 0);
@@ -51,7 +57,7 @@ void R_Register(void)
 	//gl_modulate = ri.Cvar_Get("gl_modulate", "1", CVAR_ARCHIVE);
 	//gl_log = ri.Cvar_Get("gl_log", "0", 0);
 	//gl_bitdepth = ri.Cvar_Get("gl_bitdepth", "0", 0);
-	//gl_mode = ri.Cvar_Get("gl_mode", "3", CVAR_ARCHIVE);
+	gl_mode = ri.Cvar_Get("gl_mode", "3", CVAR_ARCHIVE);
 	//gl_lightmap = ri.Cvar_Get("gl_lightmap", "0", 0);
 	//gl_shadows = ri.Cvar_Get("gl_shadows", "0", CVAR_ARCHIVE);
 	//gl_dynamic = ri.Cvar_Get("gl_dynamic", "1", 0);
@@ -89,9 +95,9 @@ void R_Register(void)
 	
 	//gl_3dlabs_broken = ri.Cvar_Get("gl_3dlabs_broken", "1", CVAR_ARCHIVE);
 
-	vid_fullscreen = ri.Cvar_Get("vid_fullscreen", "0", CVAR_ARCHIVE);
-	vid_gamma = ri.Cvar_Get("vid_gamma", "1.0", CVAR_ARCHIVE);
-	vid_ref = ri.Cvar_Get("vid_ref", "soft", CVAR_ARCHIVE);
+	vid_fullscreen = ri.Cvar_Get((char*)"vid_fullscreen", (char*)"0", CVAR_ARCHIVE);
+	vid_gamma = ri.Cvar_Get((char*)"vid_gamma", (char*)"1.0", CVAR_ARCHIVE);
+	vid_ref = ri.Cvar_Get((char*)"vid_ref", (char*)"soft", CVAR_ARCHIVE);
 
 
 
@@ -106,89 +112,25 @@ void R_Register(void)
 R_Init
 ===============
 */
-int R_Init(void* hinstance, void* hWnd)
+
+InitDxApp dxApp;
+
+qboolean R_Init(void* hinstance, void* hWnd)
 {
-	/*char renderer_buffer[1000];
-	char vendor_buffer[1000];
-	int		err;
-	int		j;
-	extern float r_turbsin[256];
 
-	for (j = 0; j < 256; j++)
-	{
-		r_turbsin[j] *= 0.5;
-	}
-
-	ri.Con_Printf(PRINT_ALL, "ref_dx12 version: "REF_VERSION"\n");*/
-
-	//Draw_GetPalette();
 
 	R_Register();
-
-	// не нужно на винде!!!
-	// initialize our QGL dynamic bindings
-	/*if (!QGL_Init(gl_driver->string))
-	{
-		QGL_Shutdown();
-		ri.Con_Printf(PRINT_ALL, "ref_gl::R_Init() - could not load \"%s\"\n", gl_driver->string);
-		return -1;
-	}*/
-
-	// инициализация специфичных фич для конкретной ОС
-	// а также привязка окна и инстанса
-	// initialize OS-specific parts of OpenGL
-	if (!GLimp_Init(hinstance, hWnd))
-	{
-		//QGL_Shutdown();
-		return -1;
+	int width, height;
+	ri.Vid_GetModeInfo(&width, &height, (int)gl_mode->value);
+	vid.height = height;
+	vid.width = width;
+	dxApp.SetWindowSize(vid.width, vid.height);
+	if (!dxApp.Initialize((HINSTANCE)hinstance, (WNDPROC)hWnd)) {
+		return qboolean::False;
 	}
-
-	// я так понял он тут устанавливает 3 версию opengl
-	// set our "safe" modes
-	//gl_state.prev_mode = 3;
-
-	// установка полноэкранного режима и размера окна
-	// а также контекста
-	// create the window and set up the context
-	/*if (!R_SetMode())
-	{
-		QGL_Shutdown();
-		ri.Con_Printf(PRINT_ALL, "ref_gl::R_Init() - could not R_SetMode()\n");
-		return -1;
-	}*/
-
-	// инициализация менюшки
-	//ri.Vid_MenuInit();
-
-	/*
-	** get our various GL strings
-	* временно удалил чтобы не путались
-	*/
 	
 
-	/*
-	** grab extensions
-	* временно удалил чтобы не путались
-	*/
-
-	// устанавливается дефолтное состояние рендера
-	//GL_SetDefaultState();
-
-
-	// ладно, пусть будет, может быть это важно (нет)
-	/*
-	** draw our stereo patterns
-	*/
-#if 0 // commented out until H3D pays us the money they owe us
-	GL_DrawStereoPattern();
-#endif
-
-	//GL_InitImages();
-	//Mod_Init();
-	//R_InitParticleTexture();
-	//Draw_InitLocal();
-
-	// тут была проверка на ошибки
+	return qboolean::True;
 }
 
 /*
@@ -198,10 +140,10 @@ R_Shutdown
 */
 void R_Shutdown(void)
 {
-	ri.Cmd_RemoveCommand("modellist");
-	ri.Cmd_RemoveCommand("screenshot");
-	ri.Cmd_RemoveCommand("imagelist");
-	ri.Cmd_RemoveCommand("gl_strings");
+	ri.Cmd_RemoveCommand((char*)"modellist");
+	ri.Cmd_RemoveCommand((char*)"screenshot");
+	ri.Cmd_RemoveCommand((char*)"imagelist");
+	ri.Cmd_RemoveCommand((char*)"gl_strings");
 
 	//Mod_FreeAll();
 
@@ -268,7 +210,7 @@ R_SetSky
 ============
 */
 // 3dstudio environment map names
-char* suf[6] = { "rt", "bk", "lf", "ft", "up", "dn" };
+char* suf[6] = { (char*)"rt", (char*)"bk", (char*)"lf", (char*)"ft", (char*)"up", (char*)"dn" };
 void R_SetSky(char* name, float rotate, vec3_t axis)
 {
 	return;
@@ -407,7 +349,7 @@ R_BeginFrame
 */
 void R_BeginFrame(float camera_separation)
 {
-	return;
+	dxApp.Draw();
 }
 
 /*
@@ -490,7 +432,7 @@ void Sys_Error(char* error, ...)
 	vsprintf(text, error, argptr);
 	va_end(argptr);
 
-	ri.Sys_Error(ERR_FATAL, "%s", text);
+	ri.Sys_Error(ERR_FATAL, (char*)"%s", text);
 }
 
 void Com_Printf(char* fmt, ...)
@@ -502,7 +444,7 @@ void Com_Printf(char* fmt, ...)
 	vsprintf(text, fmt, argptr);
 	va_end(argptr);
 
-	ri.Con_Printf(PRINT_ALL, "%s", text);
+	ri.Con_Printf(PRINT_ALL, (char*)"%s", text);
 }
 
 #endif

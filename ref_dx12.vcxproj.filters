@@ -29,19 +29,16 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="dx12_local.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="dx12w_win.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\client\ref.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\game\q_shared.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\win32\winquake.h">
+    <ClInclude Include="dx12_local.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dx12w_win.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

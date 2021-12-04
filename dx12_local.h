@@ -21,6 +21,52 @@ typedef struct
 
 extern	viddef_t	vid;
 
+extern cvar_t* dx12_mode;
+
+extern cvar_t* vid_fullscreen;
+extern cvar_t* vid_gamma;
+extern cvar_t* vid_ref;
+
+typedef struct
+{
+	
+} dx12config_t;
+
+typedef struct
+{
+	float inverse_intensity;
+	qboolean fullscreen;
+
+	int     prev_mode;
+
+	unsigned char* d_16to8table;
+
+	int lightmap_textures;
+
+	int	currenttextures[2];
+	int currenttmu;
+
+	float camera_separation;
+	qboolean stereo_enabled;
+
+	unsigned char originalRedGammaTable[256];
+	unsigned char originalGreenGammaTable[256];
+	unsigned char originalBlueGammaTable[256];
+} dx12state_t;
+
+extern dx12config_t  gl_config;
+extern dx12state_t   gl_state;
+
+typedef enum
+{
+	rserr_ok,
+
+	rserr_invalid_fullscreen,
+	rserr_invalid_mode,
+
+	rserr_unknown
+} rserr_t;
+
 /*
 
   skins will be outline flood filled and mip mapped

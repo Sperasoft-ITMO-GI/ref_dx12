@@ -1,5 +1,7 @@
 #pragma once
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <windows.h>
 #include <wrl.h>
 #include <dxgi1_4.h>
@@ -21,29 +23,22 @@
 class DxException {
 public:
 	DxException() = default;
-	DxException(HRESULT hr, const std::wstring& functionName, const std::wstring& filename, int lineNumber);
+	DxException(HRESULT hr, const char* functionName, const char* filename, int lineNumber);
 
-	std::wstring ToString()const;
+	char* ToString()const;
 
 	HRESULT ErrorCode = S_OK;
-	std::wstring FunctionName;
-	std::wstring Filename;
+	char FunctionName[256];
+	char Filename[256];
 	int LineNumber = -1;
 };
-
-inline std::wstring AnsiToWString(const std::string& str)
-{
-	WCHAR buffer[512];
-	MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, buffer, 512);
-	return std::wstring(buffer);
-}
 
 #ifndef ThrowIfFailed
 #define ThrowIfFailed(x)                                              \
 {                                                                     \
     HRESULT hr__ = (x);                                               \
-    std::wstring wfn = AnsiToWString(__FILE__);                       \
-    if(FAILED(hr__)) { throw DxException(hr__, L#x, wfn, __LINE__); } \
+    char* wfn = __FILE__;											  \
+    if(FAILED(hr__)) { throw DxException(hr__, #x, wfn, __LINE__); } \
 }
 #endif
 
@@ -88,6 +83,9 @@ private:
 private:
 	HWND mainWindow;
 
+	HINSTANCE hInstance;
+	WNDPROC wndProc;
+
 	Microsoft::WRL::ComPtr<IDXGIFactory4> dxgiFactory;
 	Microsoft::WRL::ComPtr<IDXGISwapChain> swapChain;
 	Microsoft::WRL::ComPtr<ID3D12Device> dx3dDevice;
@@ -121,5 +119,6 @@ private:
 	int clientWidth;
 	int clientHeight;
 
-	std::wstring windowName = L"Quake 2 Dx12";
+	char* windowName = "Quake 2 DX12";
+	char* windowClassName = "Quake 2";
 };

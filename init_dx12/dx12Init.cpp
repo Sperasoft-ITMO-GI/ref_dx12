@@ -7,6 +7,13 @@ using Microsoft::WRL::ComPtr;
 InitDxApp::~InitDxApp() {
 	if (dx3dDevice != nullptr) {
 		FlushCommandQueue();
+		if (mainWindow)
+		{
+			DestroyWindow(mainWindow);
+			mainWindow = NULL;
+		}
+
+		UnregisterClass(windowClassName, hInstance);
 	}
 }
 
@@ -75,22 +82,22 @@ void InitDxApp::Draw() {
 	FlushCommandQueue();
 }
 
-bool InitDxApp::InitializeWindow(HINSTANCE hinstance, WNDPROC wndProc) {
+bool InitDxApp::InitializeWindow(HINSTANCE hinstance_, WNDPROC wndProc_) {
 	WNDCLASS wc;
 	wc.style = CS_HREDRAW | CS_VREDRAW;
-	wc.lpfnWndProc = wndProc;
+	wc.lpfnWndProc = wndProc_;
 	wc.cbClsExtra = 0;
 	wc.cbWndExtra = 0;
-	wc.hInstance = hinstance;
+	wc.hInstance = hinstance_;
 	wc.hIcon = LoadIcon(0, IDI_APPLICATION);
 	wc.hCursor = LoadCursor(0, IDC_ARROW);
 	wc.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH);
 	wc.lpszMenuName = 0;
-	wc.lpszClassName = L"Quake2";
+	wc.lpszClassName = windowClassName;
 
 	if (!RegisterClass(&wc))
 	{
-		MessageBox(0, L"RegisterClass Failed.", 0, 0);
+		MessageBox(0, "RegisterClass Failed.", 0, 0);
 		return false;
 	}
 
@@ -100,13 +107,16 @@ bool InitDxApp::InitializeWindow(HINSTANCE hinstance, WNDPROC wndProc) {
 	int width = R.right - R.left;
 	int height = R.bottom - R.top;
 
-	mainWindow = CreateWindowEx(0, L"Quake2", windowName.c_str(),
-		WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, hinstance, 0);
+	mainWindow = CreateWindowEx(0, windowClassName, windowName,
+		WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, hinstance_, 0);
 	if (!mainWindow)
 	{
-		MessageBox(0, L"CreateWindow Failed.", 0, 0);
+		MessageBox(0, "CreateWindow Failed.", 0, 0);
 		return false;
 	}
+
+	this->hInstance = hinstance_;
+	this->wndProc = wndProc_;
 
 	ShowWindow(mainWindow, SW_SHOW);
 	UpdateWindow(mainWindow);
@@ -172,6 +182,8 @@ bool InitDxApp::InitializeDx() {
 	CreateCommandObjects();
 	CreateSwapChain();
 	CreateRtvAndDsvDescriptorHeaps();
+
+	return true;
 }
 
 void InitDxApp::OnResize() {
@@ -363,19 +375,37 @@ void InitDxApp::FlushCommandQueue() {
 	}
 }
 
-DxException::DxException(HRESULT hr, const std::wstring& functionName, const std::wstring& filename, int lineNumber) :
+DxException::DxException(HRESULT hr, const char* functionName, const char* filename, int lineNumber) :
 	ErrorCode(hr),
-	FunctionName(functionName),
-	Filename(filename),
-	LineNumber(lineNumber) {
+	LineNumber(lineNumber) 
+{
+	memcpy(FunctionName, 0, 256);
+	memcpy(Filename, 0, 256);
+	strcpy(FunctionName, functionName);
+	strcpy(Filename, filename);
 }
 
-std::wstring DxException::ToString() const {
+char* DxException::ToString() const {
 	// Get the string description of the error code.
 	_com_error err(ErrorCode);
-	std::wstring msg = err.ErrorMessage();
+	char msg[256];
+	memset(msg, 0, 256);
+	strcpy(msg, err.ErrorMessage());
 
-	return FunctionName + L" failed in " + Filename + L"; line " + std::to_wstring(LineNumber) + L"; error: " + msg;
+	char lineNumberToChar[16];
+	_itoa(LineNumber, lineNumberToChar, 10);
+
+	char result[1024];
+	memset(result, 0, 1024);
+	strcpy(result, FunctionName);
+	strcat(result, " failed in ");
+	strcat(result, Filename);
+	strcat(result, "; line ");
+	strcat(result, lineNumberToChar);
+	strcat(result, "; error: ");
+	strcat(result, msg);
+
+	return result;
 }
 
 

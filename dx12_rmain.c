@@ -8,10 +8,20 @@ viddef_t	vid;
 
 refimport_t	ri;
 
+cvar_t* dx12_mode;
+
+cvar_t* vid_fullscreen;
+cvar_t* vid_gamma;
+cvar_t* vid_ref;
+
 // reading param from config.txt
 void R_Register(void)
 {
-	
+	dx12_mode = ri.Cvar_Get("dx12_mode", "3", CVAR_ARCHIVE);
+
+	vid_fullscreen = ri.Cvar_Get("vid_fullscreen", "0", CVAR_ARCHIVE);
+	vid_gamma = ri.Cvar_Get("vid_gamma", "1.0", CVAR_ARCHIVE);
+	vid_ref = ri.Cvar_Get("vid_ref", "gl", CVAR_ARCHIVE);
 }
 
 /*
@@ -28,14 +38,28 @@ qboolean R_Init(void* hinstance, void* hWnd)
 
 	R_Register();
 	int width = 1280, height = 720;
-	//ri.Vid_GetModeInfo(&width, &height, (int)gl_mode->value);
+
+	// can call before setting mode (width, height)
+	// getting width and height regarding the installed mod
+	if (!ri.Vid_GetModeInfo(&width, &height, dx12_mode->value))
+	{
+		ri.Con_Printf(PRINT_ALL, " invalid mode\n");
+		//return rserr_invalid_mode;
+	}
+
 	vid.height = height;
 	vid.width = width;
 	dxApp.SetWindowSize(vid.width, vid.height);
 	if (!dxApp.Initialize((HINSTANCE)hinstance, (WNDPROC)hWnd)) {
 		return qboolean::False;
-	}
+	}	
+
+	// let the sound and input subsystems know about the new window
+	// can be call after creating windows and its context
+	ri.Vid_NewWindow(width, height);
 	
+	// can be call after creating context and Vid_NewWindow()
+	ri.Vid_MenuInit();
 
 	return qboolean::True;
 }
@@ -52,7 +76,16 @@ void R_Shutdown(void)
 	ri.Cmd_RemoveCommand((char*)"imagelist");
 	ri.Cmd_RemoveCommand((char*)"gl_strings");
 
+	// free models
+	//Mod_FreeAll();
 
+	// shutdown images
+	//GL_ShutdownImages();
+
+	/*
+	** shut down OS specific DX12 stuff like contexts, etc.
+	*/
+	dxApp.~InitDxApp();
 }
 
 // ==================================================================================================================================

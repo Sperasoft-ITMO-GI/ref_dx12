@@ -244,7 +244,12 @@ R_BeginFrame
 */
 void R_BeginFrame(float camera_separation)
 {
-	dxApp.Draw();
+	try {
+		dxApp.Draw();
+	}
+	catch (DxException& dxE) {
+		printf("%s", dxE.ToString());
+	}
 }
 
 /*

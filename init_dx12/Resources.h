@@ -22,7 +22,7 @@ struct Vertex {
 };
 
 struct ObjectConstants {
-	DirectX::XMFLOAT4X4 WorldViewProj = Identity4x4;
+	DirectX::XMFLOAT4X4 ProjectionMat = Identity4x4;
 };
 
 struct SubmeshGeometry

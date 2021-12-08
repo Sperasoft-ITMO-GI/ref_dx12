@@ -2,7 +2,8 @@
 
 using Microsoft::WRL::ComPtr;
 
-InitDxApp::~InitDxApp() {
+InitDxApp::~InitDxApp() 
+{
 	if (dx3dDevice != nullptr) {
 		FlushCommandQueue();
 		if (mainWindow)
@@ -17,7 +18,8 @@ InitDxApp::~InitDxApp() {
 	printf("%s", "[DX12]: Render destoyed");
 }
 
-bool InitDxApp::Initialize(HINSTANCE hinstance, WNDPROC wndProc) {
+bool InitDxApp::Initialize(HINSTANCE hinstance, WNDPROC wndProc) 
+{
 	if (!InitializeWindow(hinstance, wndProc)) {
 		return false;
 	}
@@ -48,12 +50,14 @@ bool InitDxApp::Initialize(HINSTANCE hinstance, WNDPROC wndProc) {
 	return true;
 }
 
-void InitDxApp::SetWindowSize(int width, int height) {
+void InitDxApp::SetWindowSize(int width, int height) 
+{
 	clientWidth = width;
 	clientHeight = height;
 }
 
-void InitDxApp::Draw() {
+void InitDxApp::Draw() 
+{
 	// Reuse the memory associated with command recording.
 	// We can only reset when the associated command lists have finished execution on the GPU.
 	ThrowIfFailed(commandListAllocator->Reset());
@@ -111,7 +115,8 @@ void InitDxApp::Draw() {
 	FlushCommandQueue();
 }
 
-bool InitDxApp::InitializeWindow(HINSTANCE hinstance_, WNDPROC wndProc_) {
+bool InitDxApp::InitializeWindow(HINSTANCE hinstance_, WNDPROC wndProc_) 
+{
 	WNDCLASS wc;
 	wc.style = CS_HREDRAW | CS_VREDRAW;
 	wc.lpfnWndProc = wndProc_;
@@ -155,7 +160,8 @@ bool InitDxApp::InitializeWindow(HINSTANCE hinstance_, WNDPROC wndProc_) {
 	return true;
 }
 
-bool InitDxApp::InitializeDx() {
+bool InitDxApp::InitializeDx() 
+{
 #if defined(DEBUG) || defined(_DEBUG) 
 	// Enable the D3D12 debug layer.
 	{
@@ -219,7 +225,8 @@ bool InitDxApp::InitializeDx() {
 	return true;
 }
 
-void InitDxApp::OnResize() {
+void InitDxApp::OnResize() 
+{
 	assert(dx3dDevice);
 	assert(swapChain);
 	assert(commandListAllocator);
@@ -314,15 +321,21 @@ void InitDxApp::OnResize() {
 
 	scissorRect = { 0, 0, clientWidth, clientHeight };
 
-	DirectX::XMMATRIX P = DirectX::XMMatrixPerspectiveFovLH(0.25f * Pi, static_cast<float>(clientWidth) / clientHeight, 1.0f, 1000.0f);
-	XMStoreFloat4x4(&mProj, P);
+	DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(0.25f * DirectX::XM_PI, static_cast<float>(clientWidth) / clientHeight, 1.0f, 1000.0f);
+	DirectX::XMMATRIX ortho = DirectX::XMMatrixOrthographicLH(clientWidth, clientHeight, 1.0f, 1000.0f);
+	XMStoreFloat4x4(&mProj, proj);
+	XMStoreFloat4x4(&mOrtho, ortho);
 }
 
-void InitDxApp::Update() {
-	// Convert Spherical to Cartesian coordinates.
-	float x = mRadius * sinf(mPhi) * cosf(mTheta);
-	float z = mRadius * sinf(mPhi) * sinf(mTheta);
-	float y = mRadius * cosf(mPhi);
+void InitDxApp::Update() 
+{
+	// Rotating camera
+	LARGE_INTEGER time = {};
+	QueryPerformanceCounter(&time);
+
+	float x = mRadius * sinf((float)time.QuadPart);
+	float y = mRadius;
+	float z = mRadius * cosf((float)time.QuadPart);
 
 	using DirectX::XMVECTOR;
 	using DirectX::XMMATRIX;
@@ -335,13 +348,16 @@ void InitDxApp::Update() {
 	XMMATRIX view = DirectX::XMMatrixLookAtLH(pos, target, up);
 	XMStoreFloat4x4(&mView, view);
 
+	// NOTE: world in this context is MODEL matrix
 	XMMATRIX world = XMLoadFloat4x4(&mWorld);
 	XMMATRIX proj = XMLoadFloat4x4(&mProj);
+	XMMATRIX ortho = XMLoadFloat4x4(&mOrtho);
+
 	XMMATRIX worldViewProj = world * view * proj;
 
 	// Update the constant buffer with the latest worldViewProj matrix.
 	ObjectConstants objConstants;
-	XMStoreFloat4x4(&objConstants.WorldViewProj, XMMatrixTranspose(worldViewProj));
+	XMStoreFloat4x4(&objConstants.ProjectionMat, XMMatrixTranspose(worldViewProj));
 	objectConstantBuffer->CopyData(0, objConstants);
 }
 
@@ -503,8 +519,8 @@ void InitDxApp::BuildRootSignature() {
 void InitDxApp::BuildShadersAndInputLayout() {
 	HRESULT hr = S_OK;
 
-	vsByteCode = CompileShader(L"D:/Projects/projects_C_and_C++/Computer_Graphics/SperasoftITMOGI/Quake-2/ref_dx12/init_dx12/shaders/color.hlsl", nullptr, "VS", "vs_5_0");
-	psByteCode = CompileShader(L"D:/Projects/projects_C_and_C++/Computer_Graphics/SperasoftITMOGI/Quake-2/ref_dx12/init_dx12/shaders/color.hlsl", nullptr, "PS", "ps_5_0");
+	vsByteCode = CompileShader(L"ref_dx12\\init_dx12\\shaders\\color.hlsl", nullptr, "VS", "vs_5_0");
+	psByteCode = CompileShader(L"ref_dx12\\init_dx12\\shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
 
 	inputLayout = {
 		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},

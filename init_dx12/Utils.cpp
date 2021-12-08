@@ -36,10 +36,10 @@ char* DxException::ToString() const {
 }
 
 ComPtr<ID3DBlob> CompileShader(
-	const std::wstring& filename,
-	const D3D_SHADER_MACRO* defines,
-	const std::string& entrypoint,
-	const std::string& target)
+    const wchar_t* filename,
+    const D3D_SHADER_MACRO* defines,
+    const char* entrypoint,
+    const char* target)
 {
 	UINT compileFlags = 0;
 #if defined(DEBUG) || defined(_DEBUG)  
@@ -50,8 +50,9 @@ ComPtr<ID3DBlob> CompileShader(
 
 	ComPtr<ID3DBlob> byteCode = nullptr;
 	ComPtr<ID3DBlob> errors;
-	hr = D3DCompileFromFile(filename.c_str(), defines, D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		entrypoint.c_str(), target.c_str(), compileFlags, 0, &byteCode, &errors);
+
+	hr = D3DCompileFromFile(filename, defines, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		entrypoint, target, compileFlags, 0, &byteCode, &errors);
 
 	if (errors != nullptr)
 		printf("[DX12][ERROR]:%s", (char*)errors->GetBufferPointer());

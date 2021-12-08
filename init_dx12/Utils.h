@@ -47,10 +47,10 @@ static UINT CalcConstantBufferByteSize(UINT byteSize) {
 }
 
 Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(
-	const std::wstring& filename,
+	const wchar_t* filename,
 	const D3D_SHADER_MACRO* defines,
-	const std::string& entrypoint,
-	const std::string& target
+	const char* entrypoint,
+	const char* target
 );
 
 Microsoft::WRL::ComPtr<ID3D12Resource> CreateDefaultBuffer(

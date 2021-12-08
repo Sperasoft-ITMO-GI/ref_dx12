@@ -132,8 +132,9 @@ private:
 	DirectX::XMFLOAT4X4 mWorld = Identity4x4;
 	DirectX::XMFLOAT4X4 mView =  Identity4x4;
 	DirectX::XMFLOAT4X4 mProj =  Identity4x4;
+	DirectX::XMFLOAT4X4 mOrtho = Identity4x4;
 
-	float mTheta = 1.5f * DirectX::XM_PI;
-	float mPhi = DirectX::XM_PIDIV4;
+	//float mTheta = 1.5f * DirectX::XM_PI;
+	//float mPhi = DirectX::XM_PIDIV4;
 	float mRadius = 5.0f;
 };

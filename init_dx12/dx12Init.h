@@ -37,11 +37,12 @@ public:
 	void Draw();
 	void Update();
 
+	void OnResize();
 private:
 	bool InitializeWindow(HINSTANCE hinstance, WNDPROC wndProc);
 	bool InitializeDx();
 
-	void OnResize();
+	
 	
 
 	void CreateCommandObjects();

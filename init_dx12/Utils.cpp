@@ -6,8 +6,8 @@ DxException::DxException(HRESULT hr, const char* functionName, const char* filen
     ErrorCode(hr),
     LineNumber(lineNumber)
 {
-    memcpy(FunctionName, 0, 256);
-    memcpy(Filename, 0, 256);
+    memset(FunctionName, 0, 256);
+    memset(Filename, 0, 256);
     strcpy(FunctionName, functionName);
     strcpy(Filename, filename);
 }

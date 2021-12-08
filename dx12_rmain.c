@@ -278,6 +278,7 @@ void R_BeginFrame(float camera_separation)
 	try {
 		dxApp.Update();
 		dxApp.Draw();
+		dxApp.OnResize();
 	}
 	catch (DxException& dxE) {
 		printf("%s", dxE.ToString());

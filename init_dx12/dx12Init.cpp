@@ -313,6 +313,9 @@ void InitDxApp::OnResize() {
 	viewPort.MaxDepth = 1.0f;
 
 	scissorRect = { 0, 0, clientWidth, clientHeight };
+
+	DirectX::XMMATRIX P = DirectX::XMMatrixPerspectiveFovLH(0.25f * Pi, static_cast<float>(clientWidth) / clientHeight, 1.0f, 1000.0f);
+	XMStoreFloat4x4(&mProj, P);
 }
 
 void InitDxApp::Update() {
@@ -556,7 +559,7 @@ void InitDxApp::BuildBoxGeometry() {
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(uint16_t);
 
-	boxGeo = std::make_unique <MeshGeometry>();
+	boxGeo = std::make_unique<MeshGeometry>();
 	boxGeo->Name = "boxGeo";
 
 	ThrowIfFailed(D3DCreateBlob(vbByteSize, &boxGeo->VertexBufferCPU));

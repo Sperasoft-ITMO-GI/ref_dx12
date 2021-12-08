@@ -15,32 +15,16 @@
 #include "d3dx12.h"
 
 #include <string>
+#include <memory>
+#include <vector>
+#include <array>
+
+#include "Resources.h"
+#include "UploadBuffer.h"
 
 #pragma comment(lib,"d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
 #pragma comment(lib, "dxgi.lib")
-
-class DxException {
-public:
-	DxException() = default;
-	DxException(HRESULT hr, const char* functionName, const char* filename, int lineNumber);
-
-	char* ToString()const;
-
-	HRESULT ErrorCode = S_OK;
-	char FunctionName[256];
-	char Filename[256];
-	int LineNumber = -1;
-};
-
-#ifndef ThrowIfFailed
-#define ThrowIfFailed(x)                                              \
-{                                                                     \
-    HRESULT hr__ = (x);                                               \
-    char* wfn = __FILE__;											  \
-    if(FAILED(hr__)) { throw DxException(hr__, #x, wfn, __LINE__); } \
-}
-#endif
 
 class InitDxApp {
 public:
@@ -51,18 +35,27 @@ public:
 	void SetWindowSize(int width, int height);
 
 	void Draw();
+	void Update();
 
 private:
 	bool InitializeWindow(HINSTANCE hinstance, WNDPROC wndProc);
 	bool InitializeDx();
 
 	void OnResize();
+	
 
 	void CreateCommandObjects();
 	void CreateSwapChain();
 	void CreateRtvAndDsvDescriptorHeaps();
 
 	void FlushCommandQueue();
+
+	void BuildDescriptorHeaps();
+	void BuildConstantBuffers();
+	void BuildRootSignature();
+	void BuildShadersAndInputLayout();
+	void BuildBoxGeometry();
+	void BuildPSO();
 
 	inline D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView() const {
 		return CD3DX12_CPU_DESCRIPTOR_HANDLE(
@@ -121,4 +114,25 @@ private:
 
 	char* windowName = "Quake 2 DX12";
 	char* windowClassName = "Quake 2";
+
+	// there the all data that need to draw cube
+private:
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> cbvHeap = nullptr;
+	std::unique_ptr<UploadBuffer<ObjectConstants>> objectConstantBuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature = nullptr;
+
+	Microsoft::WRL::ComPtr<ID3DBlob> vsByteCode = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> psByteCode = nullptr;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;
+	std::unique_ptr<MeshGeometry> boxGeo = nullptr;
+
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> pso;
+
+	DirectX::XMFLOAT4X4 mWorld = Identity4x4;
+	DirectX::XMFLOAT4X4 mView =  Identity4x4;
+	DirectX::XMFLOAT4X4 mProj =  Identity4x4;
+
+	float mTheta = 1.5f * DirectX::XM_PI;
+	float mPhi = DirectX::XM_PIDIV4;
+	float mRadius = 5.0f;
 };

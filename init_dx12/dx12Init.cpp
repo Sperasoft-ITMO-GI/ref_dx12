@@ -1,7 +1,5 @@
 #include "dx12Init.h"
 
-#include <comdef.h>
-
 using Microsoft::WRL::ComPtr;
 
 InitDxApp::~InitDxApp() {
@@ -14,7 +12,9 @@ InitDxApp::~InitDxApp() {
 		}
 
 		UnregisterClass(windowClassName, hInstance);
+		printf("%s", "[DX12]: Window destroyed\n");
 	}
+	printf("%s", "[DX12]: Render destoyed");
 }
 
 bool InitDxApp::Initialize(HINSTANCE hinstance, WNDPROC wndProc) {
@@ -27,6 +27,23 @@ bool InitDxApp::Initialize(HINSTANCE hinstance, WNDPROC wndProc) {
 	}
 
 	OnResize();
+
+	ThrowIfFailed(commandList->Reset(commandListAllocator.Get(), nullptr));
+
+	BuildDescriptorHeaps();
+	BuildConstantBuffers();
+	BuildRootSignature();
+	BuildShadersAndInputLayout();
+	BuildBoxGeometry();
+	BuildPSO();
+
+	// Execute the initialization commands.
+	ThrowIfFailed(commandList->Close());
+	ID3D12CommandList* cmdsLists[] = { commandList.Get() };
+	commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+
+	// Wait until initialization is complete.
+	FlushCommandQueue();
 
 	return true;
 }
@@ -43,23 +60,35 @@ void InitDxApp::Draw() {
 
 	// A command list can be reset after it has been added to the command queue via ExecuteCommandList.
 	// Reusing the command list reuses memory.
-	ThrowIfFailed(commandList->Reset(commandListAllocator.Get(), nullptr));
+	ThrowIfFailed(commandList->Reset(commandListAllocator.Get(), pso.Get()));
 
+	// Set the viewport and scissor rect.  This needs to be reset whenever the command list is reset.
+	commandList->RSSetViewports(1, &viewPort);
+	commandList->RSSetScissorRects(1, &scissorRect);
 	
 	// Indicate a state transition on the resource usage.
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
-	// Set the viewport and scissor rect.  This needs to be reset whenever the command list is reset.
-	commandList->RSSetViewports(1, &viewPort);
-	commandList->RSSetScissorRects(1, &scissorRect);
-
 	// Clear the back buffer and depth buffer.
-	commandList->ClearRenderTargetView(CurrentBackBufferView(), DirectX::Colors::DarkOliveGreen, 0, nullptr);
+	commandList->ClearRenderTargetView(CurrentBackBufferView(), DirectX::Colors::LightBlue, 0, nullptr);
 	commandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
 	// Specify the buffers we are going to render to.
 	commandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
+
+	ID3D12DescriptorHeap* descriptorHeaps[] = { cbvHeap.Get() };
+	commandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+
+	commandList->SetGraphicsRootSignature(rootSignature.Get());
+
+	commandList->IASetVertexBuffers(0, 1, &boxGeo->VertexBufferView());
+	commandList->IASetIndexBuffer(&boxGeo->IndexBufferView());
+	commandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	commandList->SetGraphicsRootDescriptorTable(0, cbvHeap->GetGPUDescriptorHandleForHeapStart());
+
+	commandList->DrawIndexedInstanced(boxGeo->DrawArgs["box"].IndexCount, 1, 0, 0, 0);
 
 	// Indicate a state transition on the resource usage.
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
@@ -120,6 +149,8 @@ bool InitDxApp::InitializeWindow(HINSTANCE hinstance_, WNDPROC wndProc_) {
 
 	ShowWindow(mainWindow, SW_SHOW);
 	UpdateWindow(mainWindow);
+
+	printf("%s", "[DX12]: Window created\n");
 
 	return true;
 }
@@ -182,6 +213,8 @@ bool InitDxApp::InitializeDx() {
 	CreateCommandObjects();
 	CreateSwapChain();
 	CreateRtvAndDsvDescriptorHeaps();
+
+	printf("%s", "[DX12]: DirectX 12 initialized\n");
 
 	return true;
 }
@@ -282,6 +315,33 @@ void InitDxApp::OnResize() {
 	scissorRect = { 0, 0, clientWidth, clientHeight };
 }
 
+void InitDxApp::Update() {
+	// Convert Spherical to Cartesian coordinates.
+	float x = mRadius * sinf(mPhi) * cosf(mTheta);
+	float z = mRadius * sinf(mPhi) * sinf(mTheta);
+	float y = mRadius * cosf(mPhi);
+
+	using DirectX::XMVECTOR;
+	using DirectX::XMMATRIX;
+
+	// Build the view matrix.
+	XMVECTOR pos = DirectX::XMVectorSet(x, y, z, 1.0f);
+	XMVECTOR target = DirectX::XMVectorZero();
+	XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+	XMMATRIX view = DirectX::XMMatrixLookAtLH(pos, target, up);
+	XMStoreFloat4x4(&mView, view);
+
+	XMMATRIX world = XMLoadFloat4x4(&mWorld);
+	XMMATRIX proj = XMLoadFloat4x4(&mProj);
+	XMMATRIX worldViewProj = world * view * proj;
+
+	// Update the constant buffer with the latest worldViewProj matrix.
+	ObjectConstants objConstants;
+	XMStoreFloat4x4(&objConstants.WorldViewProj, XMMatrixTranspose(worldViewProj));
+	objectConstantBuffer->CopyData(0, objConstants);
+}
+
 void InitDxApp::CreateCommandObjects() {
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -303,6 +363,8 @@ void InitDxApp::CreateCommandObjects() {
 	// to the command list we will Reset it, and it needs to be closed before
 	// calling Reset.
 	commandList->Close();
+
+	printf("%s", "[DX12]: Command objects created\n");
 }
 
 void InitDxApp::CreateSwapChain() {
@@ -331,6 +393,8 @@ void InitDxApp::CreateSwapChain() {
 		commandQueue.Get(),
 		&sd,
 		swapChain.GetAddressOf()));
+
+	printf("%s", "[DX12]: SwapChain created\n");
 }
 
 void InitDxApp::CreateRtvAndDsvDescriptorHeaps() {
@@ -375,37 +439,180 @@ void InitDxApp::FlushCommandQueue() {
 	}
 }
 
-DxException::DxException(HRESULT hr, const char* functionName, const char* filename, int lineNumber) :
-	ErrorCode(hr),
-	LineNumber(lineNumber) 
-{
-	memcpy(FunctionName, 0, 256);
-	memcpy(Filename, 0, 256);
-	strcpy(FunctionName, functionName);
-	strcpy(Filename, filename);
+void InitDxApp::BuildDescriptorHeaps() {
+	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
+	cbvHeapDesc.NumDescriptors = 1;
+	cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	cbvHeapDesc.NodeMask = 0;
+	ThrowIfFailed(dx3dDevice->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&cbvHeap)));
+
+	printf("%s", "[DX12]: Descriptor heap (CBV_SRV_UAV) build\n");
 }
 
-char* DxException::ToString() const {
-	// Get the string description of the error code.
-	_com_error err(ErrorCode);
-	char msg[256];
-	memset(msg, 0, 256);
-	strcpy(msg, err.ErrorMessage());
+void InitDxApp::BuildConstantBuffers() {
+	objectConstantBuffer = std::make_unique<UploadBuffer<ObjectConstants>>(dx3dDevice.Get(), 1, true);
+	
+	UINT cbByteSize = CalcConstantBufferByteSize(sizeof(ObjectConstants));
 
-	char lineNumberToChar[16];
-	_itoa(LineNumber, lineNumberToChar, 10);
+	D3D12_GPU_VIRTUAL_ADDRESS cbAddress = objectConstantBuffer->Resource()->GetGPUVirtualAddress();
 
-	char result[1024];
-	memset(result, 0, 1024);
-	strcpy(result, FunctionName);
-	strcat(result, " failed in ");
-	strcat(result, Filename);
-	strcat(result, "; line ");
-	strcat(result, lineNumberToChar);
-	strcat(result, "; error: ");
-	strcat(result, msg);
+	int boxCBIndex = 0;
+	cbAddress += boxCBIndex * cbByteSize;
 
-	return result;
+	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
+	cbvDesc.BufferLocation = cbAddress;
+	cbvDesc.SizeInBytes = cbByteSize;
+
+	dx3dDevice->CreateConstantBufferView(&cbvDesc, cbvHeap->GetCPUDescriptorHandleForHeapStart());
+
+	printf("%s", "[DX12]: Constant buffer view created\n");
 }
+
+void InitDxApp::BuildRootSignature() {
+	CD3DX12_ROOT_PARAMETER slotRootParameter[1];
+
+	CD3DX12_DESCRIPTOR_RANGE cbvTable;
+	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
+	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable);
+
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(1, slotRootParameter, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+	ComPtr<ID3DBlob> serializedRootSig = nullptr;
+	ComPtr<ID3DBlob> errorBlob = nullptr;
+	HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1, serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+
+	if (errorBlob != nullptr) {
+		printf("%s", errorBlob->GetBufferPointer());
+	}
+	ThrowIfFailed(hr);
+
+	ThrowIfFailed(dx3dDevice->CreateRootSignature(
+		0,
+		serializedRootSig->GetBufferPointer(),
+		serializedRootSig->GetBufferSize(),
+		IID_PPV_ARGS(&rootSignature)
+	));
+
+	printf("%s", "[DX12]: Root Signature to cbv created\n");
+}
+
+void InitDxApp::BuildShadersAndInputLayout() {
+	HRESULT hr = S_OK;
+
+	vsByteCode = CompileShader(L"D:/Projects/projects_C_and_C++/Computer_Graphics/SperasoftITMOGI/Quake-2/ref_dx12/init_dx12/shaders/color.hlsl", nullptr, "VS", "vs_5_0");
+	psByteCode = CompileShader(L"D:/Projects/projects_C_and_C++/Computer_Graphics/SperasoftITMOGI/Quake-2/ref_dx12/init_dx12/shaders/color.hlsl", nullptr, "PS", "ps_5_0");
+
+	inputLayout = {
+		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	};
+
+	printf("%s", "[DX12]: Vertex and Pixel shaders build\n");
+}
+
+void InitDxApp::BuildBoxGeometry() {
+	using DirectX::XMFLOAT3;
+	using DirectX::XMFLOAT4;
+	using namespace DirectX::Colors;
+
+	std::array<Vertex, 8> vertices = {
+		Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(White) }),
+		Vertex({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Black) }),
+		Vertex({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Red) }),
+		Vertex({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Green) }),
+		Vertex({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Blue) }),
+		Vertex({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Yellow) }),
+		Vertex({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Cyan) }),
+		Vertex({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Magenta) })
+	};
+
+	std::array<std::uint16_t, 36> indices = {
+		// front face
+		0, 1, 2,
+		0, 2, 3,
+
+		// back face
+		4, 6, 5,
+		4, 7, 6,
+
+		// left face
+		4, 5, 1,
+		4, 1, 0,
+
+		// right face
+		3, 2, 6,
+		3, 6, 7,
+
+		// top face
+		1, 5, 6,
+		1, 6, 2,
+
+		// bottom face
+		4, 0, 3,
+		4, 3, 7
+	};
+
+	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+	const UINT ibByteSize = (UINT)indices.size() * sizeof(uint16_t);
+
+	boxGeo = std::make_unique <MeshGeometry>();
+	boxGeo->Name = "boxGeo";
+
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, &boxGeo->VertexBufferCPU));
+	CopyMemory(boxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+	ThrowIfFailed(D3DCreateBlob(ibByteSize, &boxGeo->IndexBufferCPU));
+	CopyMemory(boxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+	boxGeo->VertexBufferGPU = CreateDefaultBuffer(dx3dDevice.Get(), commandList.Get(), vertices.data(), vbByteSize, boxGeo->VertexBufferUploader);
+	boxGeo->IndexBufferGPU = CreateDefaultBuffer(dx3dDevice.Get(), commandList.Get(), indices.data(), ibByteSize, boxGeo->IndexBufferUploader);
+
+	boxGeo->VertexByteStride = sizeof(Vertex);
+	boxGeo->VertexBufferByteSize = vbByteSize;
+	boxGeo->IndexFormat = DXGI_FORMAT_R16_UINT;
+	boxGeo->IndexBufferByteSize = ibByteSize;
+
+	SubmeshGeometry submesh;
+	submesh.IndexCount = (UINT)indices.size();
+	submesh.StartIndexLocation = 0;
+	submesh.BaseVertexLocation = 0;
+
+	boxGeo->DrawArgs["box"] = submesh;
+
+	printf("%s", "[DX12]: Box geometry build\n");
+}
+
+void InitDxApp::BuildPSO() {
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
+	ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
+	psoDesc.InputLayout = { inputLayout.data(), (UINT)inputLayout.size() };
+	psoDesc.pRootSignature = rootSignature.Get();
+	psoDesc.VS =
+	{
+		reinterpret_cast<BYTE*>(vsByteCode->GetBufferPointer()),
+		vsByteCode->GetBufferSize()
+	};
+	psoDesc.PS =
+	{
+		reinterpret_cast<BYTE*>(psByteCode->GetBufferPointer()),
+		psByteCode->GetBufferSize()
+	};
+	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	psoDesc.SampleMask = UINT_MAX;
+	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	psoDesc.NumRenderTargets = 1;
+	psoDesc.RTVFormats[0] = backBufferFormat;
+	psoDesc.SampleDesc.Count = msaaState ? 4 : 1;
+	psoDesc.SampleDesc.Quality = msaaState ? (msaaQuality - 1) : 0;
+	psoDesc.DSVFormat = depthStencilFormat;
+	ThrowIfFailed(dx3dDevice->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso)));
+
+	printf("%s", "[DX12]: Pipeline state object build\n");
+}
+
+
 
 

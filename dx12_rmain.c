@@ -34,8 +34,6 @@ InitDxApp dxApp;
 
 qboolean R_Init(void* hinstance, void* hWnd)
 {
-
-
 	R_Register();
 	int width = 1280, height = 720;
 
@@ -278,6 +276,7 @@ R_BeginFrame
 void R_BeginFrame(float camera_separation)
 {
 	try {
+		dxApp.Update();
 		dxApp.Draw();
 	}
 	catch (DxException& dxE) {

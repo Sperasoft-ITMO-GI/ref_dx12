@@ -4,14 +4,14 @@
 
 #include <array>
 
-void SetBufferResourcesToUploadHeap(Microsoft::WRL::ComPtr<ID3D12Device>& device,
-						            Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>& commandList,
+void SetBufferResourcesToUploadHeap(ID3D12Device* device,
+						            ID3D12GraphicsCommandList* commandList,
 	                                Microsoft::WRL::ComPtr<ID3D12Resource>& resource,
 									const void* data, size_t elementsCount, size_t elementsSize, D3D12_RESOURCE_FLAGS flags);
 
 struct MenuVertex {
-	DirectX::XMFLOAT2 pos;
-	DirectX::XMFLOAT3 color;
+	DirectX::XMFLOAT3 pos;
+	DirectX::XMFLOAT4 color;
 };
 
 class MenuResource {
@@ -20,8 +20,8 @@ public:
 	MenuResource(const MenuResource& resource);
 	MenuResource(MenuResource&& resource);
 
-	void SetToUpload(Microsoft::WRL::ComPtr<ID3D12Device> device, 
-		             Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList, 
+	void SetToUpload(ID3D12Device* device, 
+		             ID3D12GraphicsCommandList* commandList, 
 		             D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
 
 	void SetVertexes(float x, float y, float w, float h);
@@ -38,8 +38,8 @@ private:
 	static constexpr size_t kElementsCount = 4;
 	static constexpr size_t kElementSize = sizeof(MenuVertex);
 	static constexpr size_t kIndexesCount = 6;
-	static constexpr size_t kIndexSize = sizeof(size_t);
-	static constexpr std::array<size_t, kIndexesCount> indexes_ = {
+	static constexpr size_t kIndexSize = sizeof(uint16_t);
+	static constexpr std::array<uint16_t, kIndexesCount> indexes_ = {
 		0, 1, 2,
 		0, 2, 3
 	};

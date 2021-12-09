@@ -36,7 +36,7 @@ bool InitDxApp::Initialize(HINSTANCE hinstance, WNDPROC wndProc)
 	BuildConstantBuffers();
 	BuildRootSignature();
 	BuildShadersAndInputLayout();
-	//BuildBoxGeometry();
+	BuildBoxGeometry();
 	BuildPSO();
 
 	// Execute the initialization commands.
@@ -95,6 +95,7 @@ void InitDxApp::Draw()  {
 		commandList->DrawIndexedInstanced(resource.GetIndexCount(), 1, 0, 0, 0);
 	}
 
+
 	//commandList->IASetVertexBuffers(0, 1, &boxGeo->VertexBufferView());
 	//commandList->IASetIndexBuffer(&boxGeo->IndexBufferView());
 	//commandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -122,6 +123,8 @@ void InitDxApp::Draw()  {
 	// done for simplicity.  Later we will show how to organize our rendering code
 	// so we do not have to wait per frame.
 	FlushCommandQueue();
+
+	menu_resources_.clear();
 }
 
 bool InitDxApp::InitializeWindow(HINSTANCE hinstance_, WNDPROC wndProc_)
@@ -607,6 +610,10 @@ void InitDxApp::BuildBoxGeometry() {
 	submesh.BaseVertexLocation = 0;
 
 	boxGeo->DrawArgs["box"] = submesh;
+
+	mr.SetVertexes(0, 0, 1000, 500);
+	mr.SetColor(255, 0, 255);
+	mr.SetToUpload(dx3dDevice.Get(), commandList.Get());
 
 	printf("%s", "[DX12]: Box geometry build\n");
 }

@@ -43,7 +43,7 @@ public:
 
 public:
 	inline void AddMenuResource(MenuResource& menu_resource) {
-		menu_resource.SetToUpload(dx3dDevice, commandList);
+		menu_resource.SetToUpload(dx3dDevice.Get(), commandList.Get());
 		menu_resources_.push_back(menu_resource);
 	}
 
@@ -147,4 +147,5 @@ private:
 	// data to draw menu
 private: 
 	std::vector<MenuResource> menu_resources_;
+	MenuResource mr;
 };

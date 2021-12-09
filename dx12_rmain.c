@@ -230,7 +230,22 @@ Fills a box of pixels with a single color
 */
 void Draw_Fill(int x, int y, int w, int h, int c)
 {
-	return;
+	union
+	{
+		unsigned	c;
+		byte		v[4];
+	} color;
+
+	if ((unsigned)c > 255)
+		ri.Sys_Error(ERR_FATAL, "Draw_Fill: bad color");
+
+	color.c = d_8to24table[c];
+
+	MenuResource menu_resource;
+	menu_resource.SetVertexes(x, y, w, h);
+	menu_resource.SetColor(color.v[0] / 255.0, color.v[1] / 255.0, color.v[2] / 255.0);
+
+	dxApp.AddMenuResource(menu_resource);
 }
 
 /*

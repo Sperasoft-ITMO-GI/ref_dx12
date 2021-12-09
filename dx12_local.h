@@ -14,6 +14,8 @@
 
 #define	REF_VERSION	"DX12 0.01"
 
+unsigned	d_8to24table[256];
+
 typedef struct
 {
 	unsigned		width, height;			// coordinates from main game

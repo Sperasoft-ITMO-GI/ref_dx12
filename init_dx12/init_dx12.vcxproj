@@ -21,13 +21,15 @@
   <ItemGroup>
     <ClInclude Include="d3dx12.h" />
     <ClInclude Include="dx12Init.h" />
-    <ClInclude Include="Resources.h" />
-    <ClInclude Include="UploadBuffer.h" />
-    <ClInclude Include="Utils.h" />
+    <ClInclude Include="menu_resource.h" />
+    <ClInclude Include="resources.h" />
+    <ClInclude Include="uploadBuffer.h" />
+    <ClInclude Include="utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dx12Init.cpp" />
-    <ClCompile Include="Utils.cpp" />
+    <ClCompile Include="menu_resource.cpp" />
+    <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

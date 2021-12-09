@@ -36,7 +36,7 @@ bool InitDxApp::Initialize(HINSTANCE hinstance, WNDPROC wndProc)
 	BuildConstantBuffers();
 	BuildRootSignature();
 	BuildShadersAndInputLayout();
-	BuildBoxGeometry();
+	//BuildBoxGeometry();
 	BuildPSO();
 
 	// Execute the initialization commands.
@@ -56,8 +56,9 @@ void InitDxApp::SetWindowSize(int width, int height)
 	clientHeight = height;
 }
 
-void InitDxApp::Draw() 
-{
+void InitDxApp::Draw()  {
+
+
 	// Reuse the memory associated with command recording.
 	// We can only reset when the associated command lists have finished execution on the GPU.
 	ThrowIfFailed(commandListAllocator->Reset());
@@ -86,13 +87,21 @@ void InitDxApp::Draw()
 
 	commandList->SetGraphicsRootSignature(rootSignature.Get());
 
-	commandList->IASetVertexBuffers(0, 1, &boxGeo->VertexBufferView());
-	commandList->IASetIndexBuffer(&boxGeo->IndexBufferView());
-	commandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	for (auto& resource : menu_resources_) {
+		commandList->IASetVertexBuffers(0, 1, &resource.GetVertexBufferView());
+		commandList->IASetIndexBuffer(&resource.GetIndexBufferView());
+		commandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		commandList->SetGraphicsRootDescriptorTable(0, cbvHeap->GetGPUDescriptorHandleForHeapStart());
+		commandList->DrawIndexedInstanced(resource.GetIndexCount(), 1, 0, 0, 0);
+	}
 
-	commandList->SetGraphicsRootDescriptorTable(0, cbvHeap->GetGPUDescriptorHandleForHeapStart());
+	//commandList->IASetVertexBuffers(0, 1, &boxGeo->VertexBufferView());
+	//commandList->IASetIndexBuffer(&boxGeo->IndexBufferView());
+	//commandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	commandList->DrawIndexedInstanced(boxGeo->DrawArgs["box"].IndexCount, 1, 0, 0, 0);
+	//commandList->SetGraphicsRootDescriptorTable(0, cbvHeap->GetGPUDescriptorHandleForHeapStart());
+
+	//commandList->DrawIndexedInstanced(boxGeo->DrawArgs["box"].IndexCount, 1, 0, 0, 0);
 
 	// Indicate a state transition on the resource usage.
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
@@ -115,7 +124,7 @@ void InitDxApp::Draw()
 	FlushCommandQueue();
 }
 
-bool InitDxApp::InitializeWindow(HINSTANCE hinstance_, WNDPROC wndProc_) 
+bool InitDxApp::InitializeWindow(HINSTANCE hinstance_, WNDPROC wndProc_)
 {
 	WNDCLASS wc;
 	wc.style = CS_HREDRAW | CS_VREDRAW;
@@ -357,7 +366,7 @@ void InitDxApp::Update()
 
 	// Update the constant buffer with the latest worldViewProj matrix.
 	ObjectConstants objConstants;
-	XMStoreFloat4x4(&objConstants.ProjectionMat, XMMatrixTranspose(worldViewProj));
+	XMStoreFloat4x4(&objConstants.ProjectionMat, XMMatrixTranspose(ortho));
 	objectConstantBuffer->CopyData(0, objConstants);
 }
 

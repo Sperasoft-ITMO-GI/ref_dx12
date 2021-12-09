@@ -19,8 +19,10 @@
 #include <vector>
 #include <array>
 
-#include "Resources.h"
-#include "UploadBuffer.h"
+#include "resources.h"
+#include "uploadBuffer.h"
+
+#include "menu_resource.h"
 
 #pragma comment(lib,"d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
@@ -38,12 +40,16 @@ public:
 	void Update();
 
 	void OnResize();
+
+public:
+	inline void AddMenuResource(MenuResource& menu_resource) {
+		menu_resource.SetToUpload(dx3dDevice, commandList);
+		menu_resources_.push_back(menu_resource);
+	}
+
 private:
 	bool InitializeWindow(HINSTANCE hinstance, WNDPROC wndProc);
 	bool InitializeDx();
-
-	
-	
 
 	void CreateCommandObjects();
 	void CreateSwapChain();
@@ -137,4 +143,8 @@ private:
 	//float mTheta = 1.5f * DirectX::XM_PI;
 	//float mPhi = DirectX::XM_PIDIV4;
 	float mRadius = 5.0f;
+
+	// data to draw menu
+private: 
+	std::vector<MenuResource> menu_resources_;
 };
